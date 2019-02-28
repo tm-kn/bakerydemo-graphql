@@ -86,7 +86,6 @@ ROOT_URLCONF = 'bakerydemo.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': ['bakerydemo/templates', ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [

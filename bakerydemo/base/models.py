@@ -20,11 +20,13 @@ from wagtail.images.edit_handlers import ImageChooserPanel
 from wagtail.search import index
 from wagtail.snippets.models import register_snippet
 
+from wagtail_graphql.models import GraphQLEnabledModel, GraphQLField
+
 from .blocks import BaseStreamBlock
 
 
 @register_snippet
-class People(index.Indexed, ClusterableModel):
+class People(GraphQLEnabledModel, index.Indexed, ClusterableModel):
     """
     A Django model to store People objects.
     It uses the `@register_snippet` decorator to allow it to be accessible
@@ -64,6 +66,12 @@ class People(index.Indexed, ClusterableModel):
         index.SearchField('first_name'),
         index.SearchField('last_name'),
     ]
+    graphql_fields = [
+        GraphQLField('first_name'),
+        GraphQLField('last_name'),
+        GraphQLField('job_title'),
+        GraphQLField('image'),
+    ]
 
     @property
     def thumb_image(self):
@@ -83,7 +91,7 @@ class People(index.Indexed, ClusterableModel):
 
 
 @register_snippet
-class FooterText(models.Model):
+class FooterText(GraphQLEnabledModel, models.Model):
     """
     This provides editable text for the site footer. Again it uses the decorator
     `register_snippet` to allow it to be accessible via the admin. It is made
@@ -96,6 +104,10 @@ class FooterText(models.Model):
         FieldPanel('body'),
     ]
 
+    graphql_fields = [
+        GraphQLField('body'),
+    ]
+
     def __str__(self):
         return "Footer text"
 
@@ -103,7 +115,7 @@ class FooterText(models.Model):
         verbose_name_plural = 'Footer Text'
 
 
-class StandardPage(Page):
+class StandardPage(GraphQLEnabledModel, Page):
     """
     A generic content page. On this demo site we use it for an about page but
     it could be used for any type of page content that only needs a title,
@@ -130,8 +142,13 @@ class StandardPage(Page):
         ImageChooserPanel('image'),
     ]
 
+    graphql_fields = [
+        GraphQLField('introduction'),
+        GraphQLField('image'),
+        GraphQLField('body'),
+    ]
 
-class HomePage(Page):
+class HomePage(GraphQLEnabledModel, Page):
     """
     The Home Page. This looks slightly more complicated than it is. You can
     see if you visit your site and edit the homepage that it is split between
@@ -283,11 +300,27 @@ class HomePage(Page):
         ], heading="Featured homepage sections", classname="collapsible")
     ]
 
+    graphql_fields = [
+        GraphQLField('image'),
+        GraphQLField('hero_cta'),
+        GraphQLField('hero_cta_link'),
+        GraphQLField('promo_image'),
+        GraphQLField('promo_title'),
+        GraphQLField('promo_text'),
+        GraphQLField('body'),
+        GraphQLField('featured_section_1_title'),
+        GraphQLField('featured_section_1'),
+        GraphQLField('featured_section_2_title'),
+        GraphQLField('featured_section_2'),
+        GraphQLField('featured_section_3_title'),
+        GraphQLField('featured_section_3'),
+    ]
+
     def __str__(self):
         return self.title
 
 
-class GalleryPage(Page):
+class GalleryPage(GraphQLEnabledModel, Page):
     """
     This is a page to list locations from the selected Collection. We use a Q
     object to list any Collection created (/admin/collections/) even if they
@@ -329,6 +362,13 @@ class GalleryPage(Page):
     # Defining what content type can sit under the parent. Since it's a blank
     # array no subpage can be added
     subpage_types = []
+
+    graphql_fields = [
+        GraphQLField('introduction'),
+        GraphQLField('body'),
+        GraphQLField('image'),
+        GraphQLField('collection'),
+    ]
 
 
 class FormField(AbstractFormField):

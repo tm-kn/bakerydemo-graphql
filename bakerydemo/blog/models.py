@@ -18,6 +18,7 @@ from wagtail.search import index
 from wagtail.snippets.edit_handlers import SnippetChooserPanel
 
 from bakerydemo.base.blocks import BaseStreamBlock
+from wagtail_graphql.models import GraphQLEnabledModel, GraphQLField
 
 
 class BlogPeopleRelationship(Orderable, models.Model):
@@ -48,7 +49,7 @@ class BlogPageTag(TaggedItemBase):
     content_object = ParentalKey('BlogPage', related_name='tagged_items', on_delete=models.CASCADE)
 
 
-class BlogPage(Page):
+class BlogPage(GraphQLEnabledModel, Page):
     """
     A Blog Page
 
@@ -92,6 +93,15 @@ class BlogPage(Page):
         index.SearchField('body'),
     ]
 
+    graphql_fields = [
+        GraphQLField('introduction'),
+        GraphQLField('image'),
+        GraphQLField('body'),
+        GraphQLField('tags'),
+        GraphQLField('subtitle'),
+        GraphQLField('date_published'),
+    ]
+
     def authors(self):
         """
         Returns the BlogPage's related People. Again note that we are using
@@ -130,7 +140,7 @@ class BlogPage(Page):
     subpage_types = []
 
 
-class BlogIndexPage(RoutablePageMixin, Page):
+class BlogIndexPage(GraphQLEnabledModel, RoutablePageMixin, Page):
     """
     Index page for blogs.
     We need to alter the page model's context to return the child page objects,
@@ -150,6 +160,11 @@ class BlogIndexPage(RoutablePageMixin, Page):
         related_name='+',
         help_text='Landscape mode only; horizontal width between 1000px and 3000px.'
     )
+
+    graphql_fields = [
+        GraphQLField('introduction'),
+        GraphQLField('image'),
+    ]
 
     content_panels = Page.content_panels + [
         FieldPanel('introduction', classname="full"),

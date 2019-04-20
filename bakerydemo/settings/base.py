@@ -53,6 +53,9 @@ INSTALLED_APPS = [
     'wagtail.contrib.routable_page',
     'wagtail.core',
 
+    'graphene_django',
+    'wagtail_graphql',
+
     'rest_framework',
     'modelcluster',
     'taggit',
@@ -176,3 +179,8 @@ WAGTAILSEARCH_BACKENDS = {
 
 # Wagtail settings
 WAGTAIL_SITE_NAME = "bakerydemo"
+
+# Graphene settings
+GRAPHENE = {
+    'SCHEMA': 'wagtail_graphql.schema.schema'
+}

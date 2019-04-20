@@ -12,6 +12,10 @@ from wagtail.core.models import Orderable, Page
 from wagtail.search import index
 from wagtail.images.edit_handlers import ImageChooserPanel
 
+import graphene
+
+from wagtail_graphql import GraphQLEnabledModel, GraphQLField, lazy_model_type
+
 from bakerydemo.base.blocks import BaseStreamBlock
 from bakerydemo.locations.choices import DAY_CHOICES
 
@@ -21,24 +25,13 @@ class OperatingHours(models.Model):
     A Django model to capture operating hours for a Location
     """
 
-    day = models.CharField(
-        max_length=4,
-        choices=DAY_CHOICES,
-        default='MON'
-    )
-    opening_time = models.TimeField(
-        blank=True,
-        null=True
-    )
-    closing_time = models.TimeField(
-        blank=True,
-        null=True
-    )
+    day = models.CharField(max_length=4, choices=DAY_CHOICES, default='MON')
+    opening_time = models.TimeField(blank=True, null=True)
+    closing_time = models.TimeField(blank=True, null=True)
     closed = models.BooleanField(
         "Closed?",
         blank=True,
-        help_text='Tick if location is closed on this day'
-    )
+        help_text='Tick if location is closed on this day')
 
     panels = [
         FieldPanel('day'),
@@ -59,15 +52,11 @@ class OperatingHours(models.Model):
             closed = self.closing_time.strftime('%H:%M')
         else:
             closed = '--'
-        return '{}: {} - {} {}'.format(
-            self.day,
-            opening,
-            closed,
-            settings.TIME_ZONE
-        )
+        return '{}: {} - {} {}'.format(self.day, opening, closed,
+                                       settings.TIME_ZONE)
 
 
-class LocationOperatingHours(Orderable, OperatingHours):
+class LocationOperatingHours(GraphQLEnabledModel, Orderable, OperatingHours):
     """
     A model creating a relationship between the OperatingHours and Location
     Note that unlike BlogPeopleRelationship we don't include a ForeignKey to
@@ -76,28 +65,30 @@ class LocationOperatingHours(Orderable, OperatingHours):
     relate the two objects to one another. We use the ParentalKey's related_
     name to access it from the LocationPage admin
     """
-    location = ParentalKey(
-        'LocationPage',
-        related_name='hours_of_operation',
-        on_delete=models.CASCADE
-    )
+    location = ParentalKey('LocationPage',
+                           related_name='hours_of_operation',
+                           on_delete=models.CASCADE)
 
 
-class LocationsIndexPage(Page):
+class LocationsIndexPage(GraphQLEnabledModel, Page):
     """
     A Page model that creates an index page (a listview)
     """
-    introduction = models.TextField(
-        help_text='Text to describe the page',
-        blank=True)
+    introduction = models.TextField(help_text='Text to describe the page',
+                                    blank=True)
     image = models.ForeignKey(
         'wagtailimages.Image',
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
         related_name='+',
-        help_text='Landscape mode only; horizontal width between 1000px and 3000px.'
-    )
+        help_text=
+        'Landscape mode only; horizontal width between 1000px and 3000px.')
+
+    graphql_fields = [
+        GraphQLField('introduction'),
+        GraphQLField('image'),
+    ]
 
     # Only LocationPage objects can be added underneath this index page
     subpage_types = ['LocationPage']
@@ -114,8 +105,7 @@ class LocationsIndexPage(Page):
     def get_context(self, request):
         context = super(LocationsIndexPage, self).get_context(request)
         context['locations'] = LocationPage.objects.descendant_of(
-            self).live().order_by(
-            'title')
+            self).live().order_by('title')
         return context
 
     content_panels = Page.content_panels + [
@@ -124,24 +114,21 @@ class LocationsIndexPage(Page):
     ]
 
 
-class LocationPage(Page):
+class LocationPage(GraphQLEnabledModel, Page):
     """
     Detail for a specific bakery location.
     """
-    introduction = models.TextField(
-        help_text='Text to describe the page',
-        blank=True)
+    introduction = models.TextField(help_text='Text to describe the page',
+                                    blank=True)
     image = models.ForeignKey(
         'wagtailimages.Image',
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
         related_name='+',
-        help_text='Landscape mode only; horizontal width between 1000px and 3000px.'
-    )
-    body = StreamField(
-        BaseStreamBlock(), verbose_name="Page body", blank=True
-    )
+        help_text=
+        'Landscape mode only; horizontal width between 1000px and 3000px.')
+    body = StreamField(BaseStreamBlock(), verbose_name="Page body", blank=True)
     address = models.TextField()
     lat_long = models.CharField(
         max_length=36,
@@ -150,17 +137,31 @@ class LocationPage(Page):
         validators=[
             RegexValidator(
                 regex='^(\-?\d+(\.\d+)?),\s*(\-?\d+(\.\d+)?)$',
-                message='Lat Long must be a comma-separated numeric lat and long',
-                code='invalid_lat_long'
-            ),
-        ]
-    )
+                message=
+                'Lat Long must be a comma-separated numeric lat and long',
+                code='invalid_lat_long'),
+        ])
 
     # Search index configuration
     search_fields = Page.search_fields + [
         index.SearchField('address'),
         index.SearchField('body'),
     ]
+
+    graphql_fields = [
+        GraphQLField('introduction'),
+        GraphQLField('image'),
+        GraphQLField('body'),
+        GraphQLField('address'),
+        GraphQLField('lat_long'),
+        GraphQLField('is_open',
+                     graphql_type=graphene.Boolean(),
+                     resolve_func=lambda self, info: self.is_open()),
+        GraphQLField('operating_hours',
+                     graphql_type=graphene.List(lazy_model_type('locations.LocationOperatingHours')),
+                     resolve_func=lambda self, info: self.operating_hours),
+    ]
+
 
     # Fields to show to the editor in the admin view
     content_panels = [
@@ -187,11 +188,9 @@ class LocationPage(Page):
         current_time = now.time()
         current_day = now.strftime('%a').upper()
         try:
-            self.operating_hours.get(
-                day=current_day,
-                opening_time__lte=current_time,
-                closing_time__gte=current_time
-            )
+            self.operating_hours.get(day=current_day,
+                                     opening_time__lte=current_time,
+                                     closing_time__gte=current_time)
             return True
         except LocationOperatingHours.DoesNotExist:
             return False

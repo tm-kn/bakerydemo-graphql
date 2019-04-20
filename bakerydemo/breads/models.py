@@ -1,23 +1,21 @@
+from bakerydemo.base.blocks import BaseStreamBlock
 from django import forms
+from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from django.db import models
-from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-
 from modelcluster.fields import ParentalManyToManyField
-
-from wagtail.admin.edit_handlers import (
-    FieldPanel, MultiFieldPanel, StreamFieldPanel
-    )
+from wagtail.admin.edit_handlers import (FieldPanel, MultiFieldPanel,
+                                         StreamFieldPanel)
 from wagtail.core.fields import StreamField
 from wagtail.core.models import Page
+from wagtail.images.edit_handlers import ImageChooserPanel
 from wagtail.search import index
 from wagtail.snippets.models import register_snippet
-from wagtail.images.edit_handlers import ImageChooserPanel
-
-from bakerydemo.base.blocks import BaseStreamBlock
+from wagtail_graphql import GraphQLEnabledModel, GraphQLField
+import graphene
 
 
 @register_snippet
-class Country(models.Model):
+class Country(GraphQLEnabledModel, models.Model):
     """
     A Django model to store set of countries of origin.
     It uses the `@register_snippet` decorator to allow it to be accessible
@@ -30,6 +28,10 @@ class Country(models.Model):
 
     title = models.CharField(max_length=100)
 
+    graphql_fields = [
+        GraphQLField('title'),
+    ]
+
     def __str__(self):
         return self.title
 
@@ -37,8 +39,9 @@ class Country(models.Model):
         verbose_name_plural = "Countries of Origin"
 
 
+
 @register_snippet
-class BreadIngredient(models.Model):
+class BreadIngredient(GraphQLEnabledModel, models.Model):
     """
     Standard Django model that is displayed as a snippet within the admin due
     to the `@register_snippet` decorator. We use a new piece of functionality
@@ -52,6 +55,10 @@ class BreadIngredient(models.Model):
         FieldPanel('name'),
     ]
 
+    graphql_fields = [
+        GraphQLField('name'),
+    ]
+
     def __str__(self):
         return self.name
 
@@ -60,7 +67,7 @@ class BreadIngredient(models.Model):
 
 
 @register_snippet
-class BreadType(models.Model):
+class BreadType(GraphQLEnabledModel, models.Model):
     """
     A Django model to define the bread type
     It uses the `@register_snippet` decorator to allow it to be accessible
@@ -76,6 +83,10 @@ class BreadType(models.Model):
         FieldPanel('title'),
     ]
 
+    graphql_fields = [
+        GraphQLField('title'),
+    ]
+
     def __str__(self):
         return self.title
 
@@ -83,7 +94,7 @@ class BreadType(models.Model):
         verbose_name_plural = "Bread types"
 
 
-class BreadPage(Page):
+class BreadPage(GraphQLEnabledModel, Page):
     """
     Detail view for a specific bread
     """
@@ -140,6 +151,15 @@ class BreadPage(Page):
         ),
     ]
 
+    graphql_fields = [
+        GraphQLField('introduction'),
+        GraphQLField('image'),
+        GraphQLField('body'),
+        GraphQLField('origin'),
+        GraphQLField('bread_type'),
+        GraphQLField('ingredients'),
+    ]
+
     search_fields = Page.search_fields + [
         index.SearchField('body'),
     ]
@@ -147,7 +167,7 @@ class BreadPage(Page):
     parent_page_types = ['BreadsIndexPage']
 
 
-class BreadsIndexPage(Page):
+class BreadsIndexPage(GraphQLEnabledModel, Page):
     """
     Index page for breads.
 
@@ -172,6 +192,11 @@ class BreadsIndexPage(Page):
     content_panels = Page.content_panels + [
         FieldPanel('introduction', classname="full"),
         ImageChooserPanel('image'),
+    ]
+
+    graphql_fields = [
+        GraphQLField('introduction'),
+        GraphQLField('image'),
     ]
 
     # Can only have BreadPage children

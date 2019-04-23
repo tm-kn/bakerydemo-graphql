@@ -184,3 +184,5 @@ WAGTAIL_SITE_NAME = "bakerydemo"
 GRAPHENE = {
     'SCHEMA': 'wagtail_graphql.schema.schema'
 }
+
+WAGTAIL_GRAPHQL_ALLOWED_RENDITION_FILTERS = ['*']

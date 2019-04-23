@@ -1,23 +1,19 @@
 from datetime import datetime
 
+import graphene
+from bakerydemo.base.blocks import BaseStreamBlock
+from bakerydemo.locations.choices import DAY_CHOICES
 from django.conf import settings
 from django.core.validators import RegexValidator
 from django.db import models
-
 from modelcluster.fields import ParentalKey
-
+from wagtail.admin.edit_handlers import (FieldPanel, InlinePanel,
+                                         StreamFieldPanel)
 from wagtail.core.fields import StreamField
-from wagtail.admin.edit_handlers import FieldPanel, InlinePanel, StreamFieldPanel
 from wagtail.core.models import Orderable, Page
-from wagtail.search import index
 from wagtail.images.edit_handlers import ImageChooserPanel
-
-import graphene
-
+from wagtail.search import index
 from wagtail_graphql import GraphQLEnabledModel, GraphQLField, lazy_model_type
-
-from bakerydemo.base.blocks import BaseStreamBlock
-from bakerydemo.locations.choices import DAY_CHOICES
 
 
 class OperatingHours(models.Model):
@@ -68,6 +64,16 @@ class LocationOperatingHours(GraphQLEnabledModel, Orderable, OperatingHours):
     location = ParentalKey('LocationPage',
                            related_name='hours_of_operation',
                            on_delete=models.CASCADE)
+
+    graphql_fields = [
+        GraphQLField('title', graphql_type=graphene.Field(graphene.String),
+                     resolve_func=lambda self, info, **kwargs: str(self)),
+        GraphQLField('day'),
+        GraphQLField('opening_time'),
+        GraphQLField('closing_time'),
+        GraphQLField('closed'),
+        GraphQLField('location'),
+    ]
 
 
 class LocationsIndexPage(GraphQLEnabledModel, Page):

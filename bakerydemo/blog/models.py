@@ -7,6 +7,7 @@ from django.shortcuts import redirect, render
 from modelcluster.contrib.taggit import ClusterTaggableManager
 from modelcluster.fields import ParentalKey
 
+import graphene
 from taggit.models import Tag, TaggedItemBase
 
 from wagtail.contrib.routable_page.models import RoutablePageMixin, route
@@ -18,6 +19,7 @@ from wagtail.search import index
 from wagtail.snippets.edit_handlers import SnippetChooserPanel
 
 from bakerydemo.base.blocks import BaseStreamBlock
+from wagtail_graphql import lazy_queryset_list
 from wagtail_graphql.models import GraphQLEnabledModel, GraphQLField
 
 
@@ -29,15 +31,13 @@ class BlogPeopleRelationship(Orderable, models.Model):
     We have created a two way relationship between BlogPage and People using
     the ParentalKey and ForeignKey
     """
-    page = ParentalKey(
-        'BlogPage', related_name='blog_person_relationship', on_delete=models.CASCADE
-    )
-    people = models.ForeignKey(
-        'base.People', related_name='person_blog_relationship', on_delete=models.CASCADE
-    )
-    panels = [
-        SnippetChooserPanel('people')
-    ]
+    page = ParentalKey('BlogPage',
+                       related_name='blog_person_relationship',
+                       on_delete=models.CASCADE)
+    people = models.ForeignKey('base.People',
+                               related_name='person_blog_relationship',
+                               on_delete=models.CASCADE)
+    panels = [SnippetChooserPanel('people')]
 
 
 class BlogPageTag(TaggedItemBase):
@@ -46,7 +46,9 @@ class BlogPageTag(TaggedItemBase):
     the BlogPage object and tags. There's a longer guide on using it at
     http://docs.wagtail.io/en/latest/reference/pages/model_recipes.html#tagging
     """
-    content_object = ParentalKey('BlogPage', related_name='tagged_items', on_delete=models.CASCADE)
+    content_object = ParentalKey('BlogPage',
+                                 related_name='tagged_items',
+                                 on_delete=models.CASCADE)
 
 
 class BlogPage(GraphQLEnabledModel, Page):
@@ -57,25 +59,22 @@ class BlogPage(GraphQLEnabledModel, Page):
     ParentalKey's related_name in BlogPeopleRelationship. More docs:
     http://docs.wagtail.io/en/latest/topics/pages.html#inline-models
     """
-    introduction = models.TextField(
-        help_text='Text to describe the page',
-        blank=True)
+    introduction = models.TextField(help_text='Text to describe the page',
+                                    blank=True)
     image = models.ForeignKey(
         'wagtailimages.Image',
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
         related_name='+',
-        help_text='Landscape mode only; horizontal width between 1000px and 3000px.'
-    )
-    body = StreamField(
-        BaseStreamBlock(), verbose_name="Page body", blank=True
-    )
+        help_text=
+        'Landscape mode only; horizontal width between 1000px and 3000px.')
+    body = StreamField(BaseStreamBlock(), verbose_name="Page body", blank=True)
     subtitle = models.CharField(blank=True, max_length=255)
     tags = ClusterTaggableManager(through=BlogPageTag, blank=True)
-    date_published = models.DateField(
-        "Date article published", blank=True, null=True
-        )
+    date_published = models.DateField("Date article published",
+                                      blank=True,
+                                      null=True)
 
     content_panels = Page.content_panels + [
         FieldPanel('subtitle', classname="full"),
@@ -83,9 +82,10 @@ class BlogPage(GraphQLEnabledModel, Page):
         ImageChooserPanel('image'),
         StreamFieldPanel('body'),
         FieldPanel('date_published'),
-        InlinePanel(
-            'blog_person_relationship', label="Author(s)",
-            panels=None, min_num=1),
+        InlinePanel('blog_person_relationship',
+                    label="Author(s)",
+                    panels=None,
+                    min_num=1),
         FieldPanel('tags'),
     ]
 
@@ -100,6 +100,10 @@ class BlogPage(GraphQLEnabledModel, Page):
         GraphQLField('tags'),
         GraphQLField('subtitle'),
         GraphQLField('date_published'),
+        GraphQLField('authors',
+                     graphql_type=graphene.Field(
+                         lazy_queryset_list('base.People')),
+                     resolve_func=lambda self, info, **kwargs: self.authors()),
     ]
 
     def authors(self):
@@ -110,9 +114,7 @@ class BlogPage(GraphQLEnabledModel, Page):
         with a loop on the template. If we tried to access the blog_person_
         relationship directly we'd print `blog.BlogPeopleRelationship.None`
         """
-        authors = [
-            n.people for n in self.blog_person_relationship.all()
-        ]
+        authors = [n.people for n in self.blog_person_relationship.all()]
 
         return authors
 
@@ -125,11 +127,9 @@ class BlogPage(GraphQLEnabledModel, Page):
         """
         tags = self.tags.all()
         for tag in tags:
-            tag.url = '/'+'/'.join(s.strip('/') for s in [
-                self.get_parent().url,
-                'tags',
-                tag.slug
-            ])
+            tag.url = '/' + '/'.join(
+                s.strip('/')
+                for s in [self.get_parent().url, 'tags', tag.slug])
         return tags
 
     # Specifies parent to BlogPage as being BlogIndexPages
@@ -149,17 +149,16 @@ class BlogIndexPage(GraphQLEnabledModel, RoutablePageMixin, Page):
     RoutablePageMixin is used to allow for a custom sub-URL for the tag views
     defined above.
     """
-    introduction = models.TextField(
-        help_text='Text to describe the page',
-        blank=True)
+    introduction = models.TextField(help_text='Text to describe the page',
+                                    blank=True)
     image = models.ForeignKey(
         'wagtailimages.Image',
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
         related_name='+',
-        help_text='Landscape mode only; horizontal width between 1000px and 3000px.'
-    )
+        help_text=
+        'Landscape mode only; horizontal width between 1000px and 3000px.')
 
     graphql_fields = [
         GraphQLField('introduction'),
@@ -185,8 +184,7 @@ class BlogIndexPage(GraphQLEnabledModel, RoutablePageMixin, Page):
     def get_context(self, request):
         context = super(BlogIndexPage, self).get_context(request)
         context['posts'] = BlogPage.objects.descendant_of(
-            self).live().order_by(
-            '-date_published')
+            self).live().order_by('-date_published')
         return context
 
     # This defines a Custom view that utilizes Tags. This view will return all
@@ -206,10 +204,7 @@ class BlogIndexPage(GraphQLEnabledModel, RoutablePageMixin, Page):
             return redirect(self.url)
 
         posts = self.get_posts(tag=tag)
-        context = {
-            'tag': tag,
-            'posts': posts
-        }
+        context = {'tag': tag, 'posts': posts}
         return render(request, 'blog/blog_index_page.html', context)
 
     def serve_preview(self, request, mode_name):

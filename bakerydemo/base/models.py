@@ -410,16 +410,12 @@ def deploy_to_netlify_on_change(**kwargs):
     import requests
     from django.conf import settings
     try:
-        site_id = getattr(settings, 'NETLIFY_SITE_ID')
-        access_token = getattr(settings, 'NETLIFY_ACCESS_TOKEN')
+        netlify_deploy_hook_url = getattr(settings, 'NETLIFY_DEPLOY_HOOK_URL')
     except KeyError:
         return
-    if not site_id or not access_token:
+    if not netlify_deploy_hook_url:
         return
-    r = requests.post(
-        f'https://api.netlify.com//api/v1/sites/{site_id}/deploys/'
-        f'?access_token={access_token}'
-    )
+    r = requests.post(netlify_deploy_hook_url)
     r.raise_for_status()
 
 

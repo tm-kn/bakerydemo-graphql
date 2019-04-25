@@ -9,6 +9,7 @@ from wagtail.admin.edit_handlers import (FieldPanel, FieldRowPanel,
 from wagtail.contrib.forms.models import AbstractEmailForm, AbstractFormField
 from wagtail.core.fields import RichTextField, StreamField
 from wagtail.core.models import Collection, Page
+from wagtail.core.signals import page_published, page_unpublished
 from wagtail.images.edit_handlers import ImageChooserPanel
 from wagtail.search import index
 from wagtail.snippets.models import register_snippet
@@ -403,3 +404,24 @@ class FormPage(AbstractEmailForm):
             FieldPanel('subject'),
         ], "Email"),
     ]
+
+
+def deploy_to_netlify_on_change(**kwargs):
+    import requests
+    from django.conf import settings
+    try:
+        site_id = getattr(settings, 'NETLIFY_SITE_ID')
+        access_token = getattr(settings, 'NETLIFY_ACCESS_TOKEN')
+    except KeyError:
+        return
+    if not site_id or not access_token:
+        return
+    r = requests.post(
+        f'https://api.netlify.com//api/v1/sites/{site_id}/deploys/'
+        f'?access_token={access_token}'
+    )
+    r.raise_for_status()
+
+
+page_published.connect(deploy_to_netlify_on_change)
+page_unpublished.connect(deploy_to_netlify_on_change)

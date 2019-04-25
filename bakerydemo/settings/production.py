@@ -94,7 +94,7 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 if 'AWS_STORAGE_BUCKET_NAME' in os.environ:
     AWS_STORAGE_BUCKET_NAME = os.getenv('AWS_STORAGE_BUCKET_NAME')
     AWS_S3_CUSTOM_DOMAIN = '%s.s3.amazonaws.com' % AWS_STORAGE_BUCKET_NAME
-    AWS_AUTO_CREATE_BUCKET = True
+    AWS_AUTO_CREATE_BUCKET = False
 
     INSTALLED_APPS.append('storages')
     MEDIA_URL = "https://%s/" % AWS_S3_CUSTOM_DOMAIN
